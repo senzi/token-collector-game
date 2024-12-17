@@ -15,10 +15,30 @@ const presetConfigs = [
 
 const SYSTEM_PROMPT = '充满想象力，保持友好但有点儿阴阳怪气。回复问题不带列表，不带Markdown。仅用中文回复。没有起手式，直述答复，出其不意。'
 
+// 预设关卡
+const LEVELS = [
+  { id: 1, phrase: '我的愿望是世界和平', name: '第一关：世界和平' },
+  { id: 2, phrase: '春暖花开日月明朗', name: '第二关：美好时光' },
+  { id: 3, phrase: '爱国富强和谐友善敬业福', name: '第三关：集五福' }
+];
+
 // 从localStorage获取已收集的字符，如果没有则使用初始字符
 const getSavedChars = () => {
   const savedChars = localStorage.getItem('collectedChars');
   return savedChars ? new Set(JSON.parse(savedChars)) : new Set(['你', '好']);
+};
+
+// 获取当前关卡的目标短语
+const getCurrentLevelPhrase = () => {
+  const currentLevel = localStorage.getItem('currentLevel') || '1';
+  const customPhrase = localStorage.getItem('customPhrase');
+  
+  if (currentLevel === 'custom' && customPhrase) {
+    return customPhrase;
+  }
+  
+  const level = LEVELS.find(l => l.id === parseInt(currentLevel));
+  return level ? level.phrase : LEVELS[0].phrase;
 };
 
 export const useGameStore = defineStore('game', {
@@ -26,13 +46,17 @@ export const useGameStore = defineStore('game', {
     tokens: parseInt(localStorage.getItem('tokens')) || 0,
     totalUsedTokens: parseInt(localStorage.getItem('totalUsedTokens')) || 0,
     collectedChars: getSavedChars(),
-    targetPhrase: '我的愿望是世界和平',
+    targetPhrase: getCurrentLevelPhrase(),
+    currentLevel: localStorage.getItem('currentLevel') || '1',
+    customPhrase: localStorage.getItem('customPhrase') || '',
+    hasCompletedAnyLevel: localStorage.getItem('hasCompletedAnyLevel') === 'true',
     currentPrompt: '',
     llmResponse: '',
     apiKey: localStorage.getItem('apiKey') || '',
     baseApi: localStorage.getItem('baseApi') || presetConfigs[0].baseApi,
     model: localStorage.getItem('model') || presetConfigs[0].model,
     presetConfigs: presetConfigs,
+    levels: LEVELS,
   }),
 
   getters: {
@@ -49,7 +73,7 @@ export const useGameStore = defineStore('game', {
       return state.targetPhrase.split('').every(char => state.collectedChars.has(char));
     },
     systemPrompt: () => SYSTEM_PROMPT,
-    // 检查输入是否包含未收集的字符
+    collectedCharsCount: (state) => state.collectedChars.size,
     invalidChars: (state) => (input) => {
       const chars = new Set(input.split(''));
       return Array.from(chars).filter(char => {
@@ -143,6 +167,44 @@ export const useGameStore = defineStore('game', {
       localStorage.setItem('apiKey', apiKey);
       localStorage.setItem('baseApi', baseApi);
       localStorage.setItem('model', model);
+    },
+
+    // 切换关卡
+    async switchLevel(levelId, customPhrase = '') {
+      // 如果是自定义关卡
+      if (levelId === 'custom') {
+        if (!this.hasCompletedAnyLevel) {
+          throw new Error('需要完成任意官方关卡后才能使用自定义关卡');
+        }
+        // 过滤只保留中文字符
+        const filteredPhrase = customPhrase.replace(/[^\u4e00-\u9fa5]/g, '');
+        if (!filteredPhrase) {
+          throw new Error('请输入有效的中文字符');
+        }
+        this.customPhrase = filteredPhrase;
+        this.targetPhrase = filteredPhrase;
+        this.currentLevel = 'custom';
+        localStorage.setItem('customPhrase', filteredPhrase);
+      } else {
+        const level = this.levels.find(l => l.id === levelId);
+        if (!level) {
+          throw new Error('无效的关卡');
+        }
+        this.targetPhrase = level.phrase;
+        this.currentLevel = levelId;
+      }
+      
+      // 保存当前关卡
+      localStorage.setItem('currentLevel', this.currentLevel.toString());
+      
+      // 清除游戏进度
+      this.clearGameProgress();
+    },
+
+    // 标记完成任意关卡
+    markLevelCompleted() {
+      this.hasCompletedAnyLevel = true;
+      localStorage.setItem('hasCompletedAnyLevel', 'true');
     },
   }
 })

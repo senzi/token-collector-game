@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, h } from 'vue'
+import { ref, onMounted, computed, h, watch } from 'vue'
 import { useGameStore } from './stores/gameStore'
 import { llmService } from './services/api'
 import {
@@ -13,6 +13,8 @@ import {
   NTag,
   NScrollbar,
   NSelect,
+  NRadioGroup,
+  NRadio,
   useMessage,
   createDiscreteApi
 } from 'naive-ui'
@@ -30,6 +32,9 @@ const fireworks = ref(null)
 const showRefund = ref(false)
 const refundAmount = ref(0)
 const inputChar = ref('')
+const showLevelModal = ref(false);
+const selectedLevel = ref(gameStore.currentLevel);
+const customLevelPhrase = ref(gameStore.customPhrase);
 
 const isValidChar = computed(() => {
   if (!inputChar.value) return true;
@@ -234,6 +239,43 @@ const clearProgress = () => {
     }
   });
 };
+
+// 打开关卡选择
+const openLevelSelect = () => {
+  selectedLevel.value = gameStore.currentLevel;
+  customLevelPhrase.value = gameStore.customPhrase;
+  showLevelModal.value = true;
+};
+
+// 确认切换关卡
+const confirmSwitchLevel = async () => {
+  const d = dialog.warning({
+    title: '确认切换关卡',
+    content: '切换关卡将清除当前游戏进度，是否继续？',
+    positiveText: '确认切换',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await gameStore.switchLevel(
+          selectedLevel.value,
+          customLevelPhrase.value
+        );
+        message.success('关卡切换成功');
+        showLevelModal.value = false;
+      } catch (error) {
+        message.error(error.message);
+      }
+    }
+  });
+};
+
+// 监听游戏完成
+watch(() => gameStore.isGameComplete, (newValue) => {
+  if (newValue) {
+    gameStore.markLevelCompleted();
+    showFireworks();
+  }
+});
 </script>
 
 <template>
@@ -244,7 +286,12 @@ const clearProgress = () => {
         <h1 class="game-title">LLM字集 - 文字收集游戏</h1>
         <!-- 目标文字区域 -->
         <div class="target-section">
-          <div class="section-title">目标文字</div>
+          <div class="section-header">
+            <div class="section-title">目标文字</div>
+            <n-button @click="openLevelSelect" size="small" type="primary">
+              切换关卡
+            </n-button>
+          </div>
           <div class="target-chars">
             <n-tag v-for="(item, index) in gameStore.progress" :key="index"
               :type="item.collected ? 'success' : 'default'" size="large">
@@ -259,18 +306,17 @@ const clearProgress = () => {
         <!-- Token计数器和设置按钮 -->
         <div class="header">
           <div class="token-info">
-            <div class="token-card">
-              <div class="token-label">当前Token</div>
-              <div class="token-value">{{ gameStore.tokens }}</div>
+            <div class="info-item">
+              <span class="label">当前Token：</span>
+              <span class="value">{{ gameStore.tokens }}</span>
             </div>
-            <div class="token-card">
-              <div class="token-label">累计消耗</div>
-              <div class="token-value">{{ gameStore.totalUsedTokens }}</div>
+            <div class="info-item">
+              <span class="label">累计消耗：</span>
+              <span class="value">{{ gameStore.totalUsedTokens }}</span>
             </div>
-            <div class="token-refund" v-if="showRefund">
-              <div class="refund-message">
-                返还 {{ refundAmount }} Token
-              </div>
+            <div class="info-item">
+              <span class="label">字库字数：</span>
+              <span class="value">{{ gameStore.collectedCharsCount }}</span>
             </div>
           </div>
           <n-space justify="end" style="width: auto">
@@ -359,6 +405,46 @@ const clearProgress = () => {
           </n-card>
         </n-modal>
 
+        <!-- 关卡选择模态框 -->
+        <n-modal v-model:show="showLevelModal" style="width: 600px">
+          <n-card title="选择关卡" :bordered="false" size="huge" role="dialog" aria-modal="true">
+            <n-space vertical>
+              <n-radio-group v-model:value="selectedLevel">
+                <n-space vertical>
+                  <n-radio
+                    v-for="level in gameStore.levels"
+                    :key="level.id"
+                    :value="level.id"
+                  >
+                    {{ level.name }}
+                  </n-radio>
+                  <n-radio
+                    v-if="gameStore.hasCompletedAnyLevel"
+                    value="custom"
+                  >
+                    自定义关卡
+                  </n-radio>
+                </n-space>
+              </n-radio-group>
+
+              <n-input
+                v-if="selectedLevel === 'custom'"
+                v-model:value="customLevelPhrase"
+                type="textarea"
+                placeholder="请输入自定义关卡的目标文字（仅支持中文字符）"
+                :maxlength="50"
+              />
+
+              <n-space justify="end">
+                <n-button @click="showLevelModal = false">取消</n-button>
+                <n-button type="primary" @click="confirmSwitchLevel">
+                  确认切换
+                </n-button>
+              </n-space>
+            </n-space>
+          </n-card>
+        </n-modal>
+
         <!-- 烟花容器 -->
         <div class="fireworks-container"></div>
       </div>
@@ -386,12 +472,17 @@ const clearProgress = () => {
   margin-bottom: 30px;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+}
+
 .section-title {
-  font-size: 1.1em;
-  color: #666;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #2c3e50;
 }
 
 .target-chars {
@@ -455,21 +546,19 @@ const clearProgress = () => {
   position: relative;
 }
 
-.token-card {
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 8px 16px;
-  min-width: 120px;
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.token-label {
+.label {
   font-size: 0.9em;
   color: #666;
-  margin-bottom: 4px;
 }
 
-.token-value {
-  font-size: 1.4em;
+.value {
+  font-size: 1.2em;
   font-weight: bold;
   color: #2080f0;
 }
