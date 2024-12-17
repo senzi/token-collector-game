@@ -10,6 +10,11 @@ const presetConfigs = [
     name: 'DeepSeek',
     baseApi: 'https://api.deepseek.com/v1/chat/completions',
     model: 'deepseek-chat',
+  },
+  {
+    name: 'LinkAI',
+    baseApi: 'https://api.link-ai.tech/v1/chat/completions',
+    model: 'LinkAI-4o-mini',
   }
 ]
 
