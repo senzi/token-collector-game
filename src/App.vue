@@ -18,7 +18,7 @@ import {
 } from 'naive-ui'
 import { Fireworks } from 'fireworks-js'
 
-const { message } = createDiscreteApi(['message'])
+const { message, dialog } = createDiscreteApi(['message', 'dialog'])
 
 const gameStore = useGameStore()
 const showSettingsModal = ref(false)
@@ -220,12 +220,28 @@ const showFireworks = () => {
     fireworks.value.start();
   }
 };
+
+// 清除通关记录
+const clearProgress = () => {
+  const d = dialog.warning({
+    title: '确认清除通关记录',
+    content: '这将清除所有游戏进度，但保留API配置。此操作不可撤销，是否继续？',
+    positiveText: '确认清除',
+    negativeText: '取消',
+    onPositiveClick: () => {
+      gameStore.clearGameProgress();
+      message.success('游戏进度已清除');
+    }
+  });
+};
 </script>
 
 <template>
   <n-message-provider>
     <n-config-provider>
       <div class="game-container">
+        <!-- 标题 -->
+        <h1 class="game-title">LLM字集 - 文字收集游戏</h1>
         <!-- 目标文字区域 -->
         <div class="target-section">
           <div class="section-title">目标文字</div>
@@ -259,6 +275,9 @@ const showFireworks = () => {
           </div>
           <n-space justify="end" style="width: auto">
             <n-button class="settings-btn" @click="openSettings" size="small">设置</n-button>
+            <n-button @click="clearProgress" type="warning" size="small">
+              清除通关记录
+            </n-button>
           </n-space>
         </div>
 
@@ -343,6 +362,14 @@ const showFireworks = () => {
         <!-- 烟花容器 -->
         <div class="fireworks-container"></div>
       </div>
+      <!-- 页脚 -->
+      <footer class="footer">
+        <p>
+          开源地址：<a href="https://github.com/senzi/token-collector-game" target="_blank">GitHub</a> |
+          开发者：senzi & Windsurf |
+          <a href="https://github.com/senzi/token-collector-game/blob/main/LICENSE" target="_blank">MIT License</a>
+        </p>
+      </footer>
     </n-config-provider>
   </n-message-provider>
 </template>
@@ -597,6 +624,30 @@ const showFireworks = () => {
   min-width: 200px;
   font-weight: bold;
   font-size: 1.1em;
+}
+
+.game-title {
+  text-align: center;
+  font-size: 2em;
+  margin-bottom: 1em;
+  color: #2c3e50;
+}
+
+.footer {
+  margin-top: 2em;
+  padding: 1em;
+  text-align: center;
+  border-top: 1px solid #eee;
+  color: #666;
+}
+
+.footer a {
+  color: #42b983;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
 }
 
 @keyframes fadeInOut {

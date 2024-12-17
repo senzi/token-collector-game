@@ -115,6 +115,34 @@ export const useGameStore = defineStore('game', {
       this.totalUsedTokens -= amount; 
       localStorage.setItem('tokens', this.tokens.toString());
       localStorage.setItem('totalUsedTokens', this.totalUsedTokens.toString());
-    }
+    },
+
+    // 清除游戏进度，但保留API配置
+    clearGameProgress() {
+      // 保存当前的API配置
+      const apiKey = this.apiKey;
+      const baseApi = this.baseApi;
+      const model = this.model;
+
+      // 重置游戏状态
+      this.tokens = 0;
+      this.totalUsedTokens = 0;
+      this.collectedChars = new Set(['你', '好']);
+      this.currentPrompt = '';
+      this.llmResponse = '';
+
+      // 保存到localStorage
+      localStorage.setItem('tokens', '0');
+      localStorage.setItem('totalUsedTokens', '0');
+      localStorage.setItem('collectedChars', JSON.stringify(['你', '好']));
+
+      // 恢复API配置
+      this.apiKey = apiKey;
+      this.baseApi = baseApi;
+      this.model = model;
+      localStorage.setItem('apiKey', apiKey);
+      localStorage.setItem('baseApi', baseApi);
+      localStorage.setItem('model', model);
+    },
   }
 })
