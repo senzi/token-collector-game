@@ -226,10 +226,10 @@ const showFireworks = () => {
   }
 };
 
-// 清除通关记录
+// 清除进度
 const clearProgress = () => {
   const d = dialog.warning({
-    title: '确认清除通关记录',
+    title: '确认清除进度',
     content: '这将清除所有游戏进度，但保留API配置。此操作不可撤销，是否继续？',
     positiveText: '确认清除',
     negativeText: '取消',
@@ -322,7 +322,7 @@ watch(() => gameStore.isGameComplete, (newValue) => {
           <n-space justify="end" style="width: auto">
             <n-button class="settings-btn" @click="openSettings" size="small">设置</n-button>
             <n-button @click="clearProgress" type="warning" size="small">
-              清除通关记录
+              清除进度
             </n-button>
           </n-space>
         </div>
