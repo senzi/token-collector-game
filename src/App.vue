@@ -139,7 +139,7 @@ const generateResponse = async () => {
 
   try {
     gameStore.spendTokens(50);
-
+    gameStore.isGeneratingResponse = true;
     const response = await llmService.generateResponse(
       gameStore.currentPrompt,
       gameStore.apiKey,
@@ -147,6 +147,7 @@ const generateResponse = async () => {
       gameStore.model,
       gameStore.systemPrompt
     );
+    gameStore.isGeneratingResponse = false;
 
     const usedTokens = response.usage.completion_tokens || 0;
     const refund = 50 - usedTokens;
@@ -163,14 +164,11 @@ const generateResponse = async () => {
       showFireworks();
     }
   } catch (error) {
+    gameStore.isGeneratingResponse = false;
     gameStore.refundTokens(50);
 
     const errorMsg = error.response?.data?.error?.message || error.message;
-    message.error({
-      content: `请求失败: ${errorMsg}`,
-      duration: 5000,
-      closable: true
-    });
+    message.error(`请求失败: ${errorMsg}`, { duration: 5000, closable: true });
   }
 };
 
@@ -375,15 +373,18 @@ watch(() => gameStore.isGameComplete, (newValue) => {
           <n-button type="primary" :disabled="!gameStore.canGenerateResponse ||
             gameStore.invalidChars(gameStore.currentPrompt).length > 0 ||
             !gameStore.currentPrompt.length ||
-            gameStore.isGameComplete" @click="generateResponse">
-            {{ gameStore.isGameComplete ? '已通关！' : '生成回复 (50 Token，限50字回复)' }}
+            gameStore.isGameComplete"
+            :loading="gameStore.isGeneratingResponse" @click="generateResponse">
+            {{ gameStore.isGameComplete ? '已通关！' : '生成回复' }}
           </n-button>
+          <span v-if="!gameStore.isGameComplete" class="token-info-text">← 需要50 Token</span>
         </div>
         <!-- 获取Token按钮 -->
         <div class="collect-token-button">
           <n-button type="success" size="large" strong @click="gameStore.collectTokens">
             获取Token (+5)
           </n-button>
+          <span class="token-info-text">←点击相当于挖矿赚钱，才能发消息。</span>
         </div>
 
         <!-- 设置对话框 -->
@@ -459,343 +460,3 @@ watch(() => gameStore.isGameComplete, (newValue) => {
     </n-config-provider>
   </n-message-provider>
 </template>
-
-<style scoped>
-.game-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.target-section {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1em;
-}
-
-.section-title {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-.target-chars {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 1rem 0;
-  justify-content: center;
-}
-
-.target-char {
-  font-size: 1.5rem;
-  padding: 0.5rem 1rem;
-  background: #f0f0f0;
-  border-radius: 4px;
-  transition: all 0.3s;
-}
-
-.target-char.collected {
-  background: #52c41a;
-  color: white;
-  transform: scale(1.1);
-}
-
-.victory-message {
-  text-align: center;
-  color: #52c41a;
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #f6ffed;
-  border: 1px solid #b7eb8f;
-  border-radius: 4px;
-  animation: bounce 1s infinite;
-}
-
-@keyframes bounce {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.token-info {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  position: relative;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.label {
-  font-size: 0.9em;
-  color: #666;
-}
-
-.value {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #2080f0;
-}
-
-.token-refund {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 8px;
-  z-index: 10;
-}
-
-.main-area {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.char-library {
-  margin-bottom: 20px;
-  background: #fff;
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.input-description {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-}
-
-.input-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
-.input-wrapper input {
-  width: 60px;
-  height: 40px;
-  text-align: center;
-  font-size: 1.2rem;
-  padding: 0.5rem;
-  border: 2px solid #d9d9d9;
-  border-radius: 4px;
-  transition: all 0.3s;
-}
-
-.input-wrapper input:focus {
-  border-color: #40a9ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-  outline: none;
-}
-
-.char-validation {
-  margin-left: 0.5rem;
-  font-size: 0.9rem;
-  transition: all 0.3s;
-}
-
-.char-validation.valid {
-  color: #52c41a;
-}
-
-.char-validation.invalid {
-  color: #ff4d4f;
-}
-
-.prompt-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  min-height: 40px;
-  padding: 0.5rem;
-  background-color: #fafafa;
-  border-radius: 4px;
-  border: 1px solid #f0f0f0;
-}
-
-.prompt-tag {
-  background-color: #e6f7ff;
-  border: 1px solid #91d5ff;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.prompt-tag:hover {
-  background-color: #bae7ff;
-}
-
-.section-note {
-  font-size: 0.8rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-  font-style: italic;
-}
-
-.response-content {
-  padding: 1rem;
-  border-radius: 8px;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-}
-
-.generate-button {
-  display: flex;
-  justify-content: center;
-  margin-top: 10px;
-}
-
-.response-section {
-  margin: 20px 0;
-}
-
-.token-collect {
-  text-align: center;
-  margin: 20px 0;
-}
-
-.fireworks-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-.refund-message {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  z-index: 1000;
-  animation: fadeInOut 3s ease-in-out;
-}
-
-.collect-token-button {
-  text-align: center;
-  margin-top: 20px;
-}
-
-.collect-token-button .n-button {
-  min-width: 200px;
-  font-weight: bold;
-  font-size: 1.1em;
-}
-
-.game-title {
-  text-align: center;
-  font-size: 2em;
-  margin-bottom: 1em;
-  color: #2c3e50;
-}
-
-.footer {
-  margin-top: 2em;
-  padding: 1em;
-  text-align: center;
-  border-top: 1px solid #eee;
-  color: #666;
-}
-
-.footer a {
-  color: #42b983;
-  text-decoration: none;
-}
-
-.footer a:hover {
-  text-decoration: underline;
-}
-
-@keyframes fadeInOut {
-  0% {
-    opacity: 0;
-  }
-
-  10% {
-    opacity: 1;
-  }
-
-  90% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-  }
-}
-
-.settings-btn {
-  background-color: #4CAF50;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.3s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.settings-btn:hover {
-  background-color: #45a049;
-}
-
-@media (max-width: 600px) {
-  .game-container {
-    padding: 10px;
-  }
-
-  .target-title {
-    font-size: 1.2em;
-  }
-
-  .header {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .token-info {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-  }
-
-  .token-card {
-    min-width: 100px;
-  }
-}
-</style>
