@@ -35,6 +35,7 @@ const inputChar = ref('')
 const showLevelModal = ref(false);
 const selectedLevel = ref(gameStore.currentLevel);
 const customLevelPhrase = ref(gameStore.customPhrase);
+const customInitialChars = ref('');
 const lastPrompt = ref('');
 
 const isValidChar = computed(() => {
@@ -261,7 +262,8 @@ const confirmSwitchLevel = async () => {
       try {
         await gameStore.switchLevel(
           selectedLevel.value,
-          customLevelPhrase.value
+          customLevelPhrase.value,
+          customInitialChars.value
         );
         message.success('关卡切换成功');
         showLevelModal.value = false;
@@ -279,6 +281,13 @@ watch(() => gameStore.isGameComplete, (newValue) => {
     showFireworks();
   }
 });
+
+const highlightAnswer = (answer) => {
+  const targetChars = new Set(gameStore.targetPhrase.split(''));
+  return answer.split('').map(char => {
+    return targetChars.has(char) ? `<span class="highlight">${char}</span>` : char;
+  }).join('');
+};
 </script>
 
 <template>
@@ -302,7 +311,7 @@ watch(() => gameStore.isGameComplete, (newValue) => {
             </n-tag>
           </div>
           <div v-if="gameStore.isGameComplete" class="victory-message">
-            通关！截图分享到微博吧w
+            通关！截图分享给大家看看吧w
           </div>
         </div>
 
@@ -375,7 +384,7 @@ watch(() => gameStore.isGameComplete, (newValue) => {
               <div class="llm-response">
                 <strong>答：</strong> 
                 <span v-if="gameStore.isGeneratingResponse">LLM正在输入...</span>
-                <span v-else>{{ gameStore.llmResponse }}</span>
+                <span v-else v-html="highlightAnswer(gameStore.llmResponse)"></span>
               </div>
             </n-space>
           </n-card>
@@ -398,6 +407,17 @@ watch(() => gameStore.isGameComplete, (newValue) => {
             获取Token (+5)
           </n-button>
           <span class="token-info-text">←点击相当于挖矿赚钱，才能发消息。</span>
+        </div>
+
+        <div class="highlight-moments" v-if="gameStore.highlightMoments.length > 0">
+          <h3>高光时刻 <span style="font-size: 0.8em; color: gray;">(目标文字: {{ gameStore.targetPhrase }})</span></h3>
+          <n-space vertical>
+            <n-card v-for="(moment, index) in gameStore.highlightMoments" :key="index">
+              <div><strong>问：</strong> {{ moment.question }}</div>
+              <div><strong>答：</strong> <span v-html="highlightAnswer(moment.answer)"></span></div>
+            </n-card>
+          </n-space>
+          <span style="display: block; text-align: center; color: gray;">请享受「狙击」成功的快乐w</span>
         </div>
 
         <!-- 设置对话框 -->
@@ -448,6 +468,12 @@ watch(() => gameStore.isGameComplete, (newValue) => {
                 placeholder="请输入自定义关卡的目标文字（仅支持中文字符）"
                 :maxlength="50"
               />
+              <n-input
+                v-if="selectedLevel === 'custom'"
+                v-model:value="customInitialChars"
+                type="textarea"
+                placeholder="请输入自定义关卡的初始字符"
+              />
 
               <n-space justify="end">
                 <n-button @click="showLevelModal = false">取消</n-button>
@@ -473,3 +499,10 @@ watch(() => gameStore.isGameComplete, (newValue) => {
     </n-config-provider>
   </n-message-provider>
 </template>
+
+<style>
+.highlight {
+  background-color: rgb(255, 255, 218);
+  font-weight: bold;
+}
+</style>
