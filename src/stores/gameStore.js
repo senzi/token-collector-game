@@ -61,7 +61,15 @@ export const useGameStore = defineStore('game', {
     tokens: parseInt(localStorage.getItem('tokens')) || 0,
     totalUsedTokens: parseInt(localStorage.getItem('totalUsedTokens')) || 0,
     currentLevel: localStorage.getItem('currentLevel') || '1',
-    targetPhrase: localStorage.getItem('customPhrase') || LEVELS[0].phrase,
+    targetPhrase: (() => {
+      const currentLevel = localStorage.getItem('currentLevel');
+      if (currentLevel === 'custom') {
+        return localStorage.getItem('customPhrase') || '';
+      } else {
+        const level = LEVELS.find(l => l.id.toString() === currentLevel);
+        return level ? level.phrase : LEVELS[0].phrase;
+      }
+    })(),
     collectedChars: new Set(JSON.parse(localStorage.getItem('collectedChars') || '[]')),
     customPhrase: localStorage.getItem('customPhrase') || '',
     hasCompletedAnyLevel: localStorage.getItem('hasCompletedAnyLevel') === 'true',
@@ -238,7 +246,12 @@ export const useGameStore = defineStore('game', {
           name: '自定义关卡',
           initialChars: Array.from(new Set(filteredInitialChars.split('')))
         };
+        // 保存当前关卡
+        const currentLevel = this.currentLevel;
         this.clearGameProgress();
+        // 恢复当前关卡
+        this.currentLevel = currentLevel;
+        localStorage.setItem('currentLevel', this.currentLevel.toString());
         this.targetPhrase = customLevel.phrase;
         this.collectedChars = new Set(customLevel.initialChars);
         this.currentLevel = customLevel.id;
