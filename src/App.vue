@@ -35,6 +35,7 @@ const inputChar = ref('')
 const showLevelModal = ref(false);
 const selectedLevel = ref(gameStore.currentLevel);
 const customLevelPhrase = ref(gameStore.customPhrase);
+const lastPrompt = ref('');
 
 const isValidChar = computed(() => {
   if (!inputChar.value) return true;
@@ -130,6 +131,9 @@ const generateResponse = async () => {
     return;
   }
 
+  // 缓存当前的提示词
+  lastPrompt.value = gameStore.currentPrompt;
+
   // 检查API配置
   if (!gameStore.apiKey) {
     message.error('请先配置API Key');
@@ -140,6 +144,7 @@ const generateResponse = async () => {
   try {
     gameStore.spendTokens(50);
     gameStore.isGeneratingResponse = true;
+
     const response = await llmService.generateResponse(
       gameStore.currentPrompt,
       gameStore.apiKey,
@@ -364,8 +369,16 @@ watch(() => gameStore.isGameComplete, (newValue) => {
 
         <!-- LLM回复区域 -->
         <div class="response-section" v-if="gameStore.llmResponse">
-          <div class="section-title">回复</div>
-          <div class="llm-response">{{ gameStore.llmResponse }}</div>
+          <n-card>
+            <n-space vertical>
+              <div class="llm-question"><strong>问：</strong> {{ lastPrompt }}</div>
+              <div class="llm-response">
+                <strong>答：</strong> 
+                <span v-if="gameStore.isGeneratingResponse">LLM正在输入...</span>
+                <span v-else>{{ gameStore.llmResponse }}</span>
+              </div>
+            </n-space>
+          </n-card>
         </div>
 
         <!-- 生成回复按钮 -->
