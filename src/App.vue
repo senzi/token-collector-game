@@ -183,7 +183,7 @@ const showFireworks = () => {
 const clearProgress = () => {
   const d = dialog.warning({
     title: '确认清除进度',
-    content: '这将清除所有游戏进度，但保留API配置。此操作不可撤销，是否继续？',
+    content: '这将清除所有游戏进度。此操作不可撤销，是否继续？',
     positiveText: '确认清除',
     negativeText: '取消',
     onPositiveClick: () => {
