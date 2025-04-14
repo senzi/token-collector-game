@@ -1,23 +1,5 @@
 import { defineStore } from 'pinia'
 
-const presetConfigs = [
-  {
-    name: 'Moonshot AI',
-    baseApi: 'https://api.moonshot.cn/v1/chat/completions',
-    model: 'moonshot-v1-8k',
-  },
-  {
-    name: 'DeepSeek',
-    baseApi: 'https://api.deepseek.com/v1/chat/completions',
-    model: 'deepseek-chat',
-  },
-  {
-    name: 'LinkAI',
-    baseApi: 'https://api.link-ai.tech/v1/chat/completions',
-    model: 'LinkAI-4o-mini',
-  }
-]
-
 const SYSTEM_PROMPT = '你服务的对象能使用的文字有限，可能不成句子。但你很有耐心，请尽可能理解TA的意图。回复不带列表，不带Markdown。仅用中文回复。没有起手式，直述，出其不意。不打招呼！'
 
 //调试作弊用：
@@ -75,10 +57,6 @@ export const useGameStore = defineStore('game', {
     hasCompletedAnyLevel: localStorage.getItem('hasCompletedAnyLevel') === 'true',
     currentPrompt: '',
     llmResponse: '',
-    apiKey: localStorage.getItem('apiKey') || '',
-    baseApi: localStorage.getItem('baseApi') || presetConfigs[0].baseApi,
-    model: localStorage.getItem('model') || presetConfigs[0].model,
-    presetConfigs: presetConfigs,
     levels: LEVELS,
     highlightMoments: JSON.parse(localStorage.getItem('highlightMoments')) || [],
   }),
@@ -159,15 +137,6 @@ export const useGameStore = defineStore('game', {
       }
     },
 
-    setApiConfig(key, baseApi, model) {
-      this.apiKey = key;
-      this.baseApi = baseApi;
-      this.model = model;
-      localStorage.setItem('apiKey', key);
-      localStorage.setItem('baseApi', baseApi);
-      localStorage.setItem('model', model);
-    },
-
     updateCurrentPrompt(prompt) {
       this.currentPrompt = prompt;
     },
@@ -188,14 +157,9 @@ export const useGameStore = defineStore('game', {
       localStorage.setItem('totalUsedTokens', this.totalUsedTokens.toString());
     },
 
-    // 清除游戏进度，但保留API配置
+    // 清除游戏进度
     clearGameProgress() {
-      // 保存当前的API配置
-      const apiKey = this.apiKey;
-      const baseApi = this.baseApi;
-      const model = this.model;
-
-      // 重置游戏状态
+      // 不再保留 API 配置
       this.tokens = 0;
       this.totalUsedTokens = 0;
       const currentLevel = localStorage.getItem('currentLevel');
@@ -209,20 +173,11 @@ export const useGameStore = defineStore('game', {
       this.currentPrompt = '';
       this.llmResponse = '';
       this.highlightMoments = [];
-
-      // 保存到localStorage
+    
       localStorage.setItem('tokens', '0');
       localStorage.setItem('totalUsedTokens', '0');
       localStorage.setItem('collectedChars', JSON.stringify(Array.from(this.collectedChars)));
       localStorage.setItem('highlightMoments', JSON.stringify([]));
-
-      // 恢复API配置
-      this.apiKey = apiKey;
-      this.baseApi = baseApi;
-      this.model = model;
-      localStorage.setItem('apiKey', apiKey);
-      localStorage.setItem('baseApi', baseApi);
-      localStorage.setItem('model', model);
     },
 
     // 切换关卡

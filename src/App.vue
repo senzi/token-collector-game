@@ -23,11 +23,6 @@ import { Fireworks } from 'fireworks-js'
 const { message, dialog } = createDiscreteApi(['message', 'dialog'])
 
 const gameStore = useGameStore()
-const showSettingsModal = ref(false)
-const apiKeyInput = ref('')
-const baseApiInput = ref('')
-const modelInput = ref('')
-const selectedPreset = ref(null)
 const fireworks = ref(null)
 const showRefund = ref(false)
 const refundAmount = ref(0)
@@ -46,42 +41,6 @@ const isValidChar = computed(() => {
 const getValidationMessage = () => {
   if (!inputChar.value) return '';
   return isValidChar.value ? '✓ 可用' : '✗ 未在字库中';
-};
-
-// 配置API
-const openSettings = () => {
-  apiKeyInput.value = gameStore.apiKey;
-  baseApiInput.value = gameStore.baseApi;
-  modelInput.value = gameStore.model;
-  selectedPreset.value = null;
-  showSettingsModal.value = true;
-};
-
-const handlePresetChange = (presetName) => {
-  const preset = gameStore.presetConfigs.find(c => c.name === presetName);
-  if (preset) {
-    baseApiInput.value = preset.baseApi;
-    modelInput.value = preset.model;
-  }
-};
-
-const saveSettings = () => {
-  if (!apiKeyInput.value.trim()) {
-    message.warning('请输入API Key');
-    return;
-  }
-
-  try {
-    gameStore.setApiConfig(
-      apiKeyInput.value,
-      baseApiInput.value,
-      modelInput.value
-    );
-    showSettingsModal.value = false;
-    message.success('配置已保存');
-  } catch (error) {
-    message.error('保存配置失败');
-  }
 };
 
 // 添加字符到提示词
@@ -135,22 +94,12 @@ const generateResponse = async () => {
   // 缓存当前的提示词
   lastPrompt.value = gameStore.currentPrompt;
 
-  // 检查API配置
-  if (!gameStore.apiKey) {
-    message.error('请先配置API Key');
-    openSettings();
-    return;
-  }
-
   try {
     gameStore.spendTokens(50);
     gameStore.isGeneratingResponse = true;
 
     const response = await llmService.generateResponse(
       gameStore.currentPrompt,
-      gameStore.apiKey,
-      gameStore.baseApi,
-      gameStore.model,
       gameStore.systemPrompt
     );
     gameStore.isGeneratingResponse = false;
@@ -332,7 +281,6 @@ const highlightAnswer = (answer) => {
             </div>
           </div>
           <n-space justify="end" style="width: auto">
-            <n-button class="settings-btn" @click="openSettings" size="small">设置</n-button>
             <n-button @click="clearProgress" type="warning" size="small">
               清除进度
             </n-button>
@@ -382,7 +330,7 @@ const highlightAnswer = (answer) => {
             <n-space vertical>
               <div class="llm-question"><strong>问：</strong> {{ lastPrompt }}</div>
               <div class="llm-response">
-                <strong>答：</strong> 
+                <strong>答：</strong>
                 <span v-if="gameStore.isGeneratingResponse">LLM正在输入...</span>
                 <span v-else v-html="highlightAnswer(gameStore.llmResponse)"></span>
               </div>
@@ -395,8 +343,7 @@ const highlightAnswer = (answer) => {
           <n-button type="primary" :disabled="!gameStore.canGenerateResponse ||
             gameStore.invalidChars(gameStore.currentPrompt).length > 0 ||
             !gameStore.currentPrompt.length ||
-            gameStore.isGameComplete"
-            :loading="gameStore.isGeneratingResponse" @click="generateResponse">
+            gameStore.isGameComplete" :loading="gameStore.isGeneratingResponse" @click="generateResponse">
             {{ gameStore.isGameComplete ? '已通关！' : '生成回复' }}
           </n-button>
           <span v-if="!gameStore.isGameComplete" class="token-info-text">← 需要50 Token</span>
@@ -420,60 +367,25 @@ const highlightAnswer = (answer) => {
           <span style="display: block; text-align: center; color: gray;">请享受「狙击」成功的快乐w</span>
         </div>
 
-        <!-- 设置对话框 -->
-        <n-modal v-model:show="showSettingsModal">
-          <n-card style="width: 600px" title="API设置" :bordered="false" size="huge" role="dialog" aria-modal="true">
-            <n-space vertical>
-              <n-select v-model:value="selectedPreset" :options="gameStore.presetConfigs.map(config => ({
-                label: config.name,
-                value: config.name
-              }))" placeholder="选择预设配置" clearable @update:value="handlePresetChange" />
-              <n-input v-model:value="apiKeyInput" type="password" placeholder="输入API Key" label="API Key" />
-              <n-input v-model:value="baseApiInput" placeholder="输入Base API URL" label="Base API" />
-              <n-input v-model:value="modelInput" placeholder="输入模型名称" label="Model" />
-              <n-space justify="end">
-                <n-button @click="showSettingsModal = false">取消</n-button>
-                <n-button type="primary" @click="saveSettings">保存</n-button>
-              </n-space>
-            </n-space>
-          </n-card>
-        </n-modal>
-
         <!-- 关卡选择模态框 -->
         <n-modal v-model:show="showLevelModal" style="width: 600px">
           <n-card title="选择关卡" :bordered="false" size="huge" role="dialog" aria-modal="true">
             <n-space vertical>
               <n-radio-group v-model:value="selectedLevel">
                 <n-space vertical>
-                  <n-radio
-                    v-for="level in gameStore.levels"
-                    :key="level.id"
-                    :value="level.id"
-                  >
+                  <n-radio v-for="level in gameStore.levels" :key="level.id" :value="level.id">
                     {{ level.name }}
                   </n-radio>
-                  <n-radio
-                    v-if="gameStore.hasCompletedAnyLevel"
-                    value="custom"
-                  >
+                  <n-radio v-if="gameStore.hasCompletedAnyLevel" value="custom">
                     自定义关卡
                   </n-radio>
                 </n-space>
               </n-radio-group>
 
-              <n-input
-                v-if="selectedLevel === 'custom'"
-                v-model:value="customLevelPhrase"
-                type="textarea"
-                placeholder="请输入自定义关卡的目标文字（仅支持中文字符）"
-                :maxlength="50"
-              />
-              <n-input
-                v-if="selectedLevel === 'custom'"
-                v-model:value="customInitialChars"
-                type="textarea"
-                placeholder="请输入自定义关卡的初始字符"
-              />
+              <n-input v-if="selectedLevel === 'custom'" v-model:value="customLevelPhrase" type="textarea"
+                placeholder="请输入自定义关卡的目标文字（仅支持中文字符）" :maxlength="50" />
+              <n-input v-if="selectedLevel === 'custom'" v-model:value="customInitialChars" type="textarea"
+                placeholder="请输入自定义关卡的初始字符" />
 
               <n-space justify="end">
                 <n-button @click="showLevelModal = false">取消</n-button>
