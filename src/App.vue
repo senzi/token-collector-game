@@ -100,8 +100,7 @@ const generateResponse = async () => {
     gameStore.isGeneratingResponse = true;
 
     const response = await llmService.generateResponse(
-      gameStore.currentPrompt,
-      gameStore.systemPrompt
+      gameStore.currentPrompt
     );
     gameStore.isGeneratingResponse = false;
 

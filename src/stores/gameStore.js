@@ -1,9 +1,5 @@
 import { defineStore } from 'pinia'
 
-const SYSTEM_PROMPT = '你服务的对象能使用的文字有限，可能不成句子。但你很有耐心，请尽可能理解TA的意图。回复不带列表，不带Markdown。仅用中文回复。没有起手式，直述，出其不意。不打招呼！'
-
-//调试作弊用：
-//const SYSTEM_PROMPT = '所有回复以"最好的就是我。'
 
 // 预设关卡
 const LEVELS = [
@@ -77,7 +73,6 @@ export const useGameStore = defineStore('game', {
     isGameComplete: (state) => {
       return state.targetPhrase.split('').every(char => state.collectedChars.has(char));
     },
-    systemPrompt: () => SYSTEM_PROMPT,
     collectedCharsCount: (state) => state.collectedChars.size,
     invalidChars: (state) => (input) => {
       const chars = new Set(input.split(''));

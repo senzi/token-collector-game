@@ -1,11 +1,15 @@
 import axios from 'axios';
 
 export const llmService = {
-  async generateResponse(prompt, systemPrompt) {
+  async generateResponse(prompt) {
     try {
       const response = await axios.post('/api/llm', {
         prompt,
-        systemPrompt
+        password: "silicon-truth-collector"
+      }, {
+        headers: {
+          'Accept': 'application/x-silicon-truth'
+        }
       });
 
       return response.data;
