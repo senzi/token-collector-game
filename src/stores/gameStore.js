@@ -7,21 +7,21 @@ const SYSTEM_PROMPT = '你服务的对象能使用的文字有限，可能不成
 
 // 预设关卡
 const LEVELS = [
-  { id: 1, phrase: '我的愿望是世界和平', name: '第一关：世界和平', initialChars: ['喵'] },
-  { id: 2, phrase: '春暖花开日月明朗', name: '第二关：美好时光', initialChars: ['汪'] },
-  { id: 3, phrase: '爱国富强和谐友善敬业福', name: '第三关：集五福', initialChars: ['宝'] },
-  { id: 4, phrase: '一二三四五六七八九十百千万', name: '第四关：数来宝', initialChars: ['陈','景','润'] },
-  { id: 5, phrase: '黄龙江一派全都带蓝牙', name: '第五关：高速运转', initialChars: ['啊','巴'] }
+  { id: 1, phrase: '龙马精神万事如意', name: '特别关：2026新春快乐', initialChars: ['祝'] },
+  { id: 2, phrase: '我的愿望是世界和平', name: '第一关：世界和平', initialChars: ['喵'] },
+  { id: 3, phrase: '春暖花开日月明朗', name: '第二关：美好时光', initialChars: ['汪'] },
+  { id: 4, phrase: '爱国富强和谐友善敬业福', name: '第三关：集五福', initialChars: ['宝'] },
+  { id: 5, phrase: '一二三四五六七八九十百千万', name: '第四关：数来宝', initialChars: ['陈', '景', '润'] },
+  { id: 6, phrase: '黄龙江一派全都带蓝牙', name: '第五关：高速运转', initialChars: ['啊', '巴'] }
 ];
 
 // 从localStorage获取已收集的字符，如果没有则使用初始字符
-const getSavedChars = () => {
+const getSavedChars = (levelId = '1') => {
   const savedChars = localStorage.getItem('collectedChars');
   if (savedChars) {
     return new Set(JSON.parse(savedChars));
   }
-  const currentLevel = localStorage.getItem('currentLevel') || '1';
-  const level = LEVELS.find(l => l.id === parseInt(currentLevel));
+  const level = LEVELS.find(l => l.id === parseInt(levelId));
   return new Set(level ? level.initialChars : []);
 };
 
@@ -29,40 +29,43 @@ const getSavedChars = () => {
 const getCurrentLevelPhrase = () => {
   const currentLevel = localStorage.getItem('currentLevel') || '1';
   const customPhrase = localStorage.getItem('customPhrase');
-  
+
   if (currentLevel === 'custom' && customPhrase) {
     return customPhrase;
   }
-  
+
   const level = LEVELS.find(l => l.id === parseInt(currentLevel));
   return level ? level.phrase : LEVELS[0].phrase;
 };
 
 export const useGameStore = defineStore('game', {
-  state: () => ({
-    tokens: parseInt(localStorage.getItem('tokens')) || 0,
-    totalUsedTokens: parseInt(localStorage.getItem('totalUsedTokens')) || 0,
-    currentLevel: localStorage.getItem('currentLevel') || '1',
-    targetPhrase: (() => {
-      const currentLevel = localStorage.getItem('currentLevel');
-      if (currentLevel === 'custom') {
-        return localStorage.getItem('customPhrase') || '';
-      } else {
-        const level = LEVELS.find(l => l.id.toString() === currentLevel);
-        return level ? level.phrase : LEVELS[0].phrase;
-      }
-    })(),
-    collectedChars: new Set(JSON.parse(localStorage.getItem('collectedChars') || '[]')),
-    customPhrase: localStorage.getItem('customPhrase') || '',
-    hasCompletedAnyLevel: localStorage.getItem('hasCompletedAnyLevel') === 'true',
-    currentPrompt: '',
-    llmResponse: '',
-    levels: LEVELS,
-    highlightMoments: JSON.parse(localStorage.getItem('highlightMoments')) || [],
-  }),
+  state: () => {
+    const currentLevel = localStorage.getItem('currentLevel') || '1';
+    return {
+      tokens: parseInt(localStorage.getItem('tokens')) || 0,
+      totalUsedTokens: parseInt(localStorage.getItem('totalUsedTokens')) || 0,
+      currentLevel: currentLevel,
+      targetPhrase: (() => {
+        if (currentLevel === 'custom') {
+          return localStorage.getItem('customPhrase') || '';
+        } else {
+          const level = LEVELS.find(l => l.id.toString() === currentLevel);
+          return level ? level.phrase : LEVELS[0].phrase;
+        }
+      })(),
+      collectedChars: getSavedChars(currentLevel),
+      customPhrase: localStorage.getItem('customPhrase') || '',
+      hasCompletedAnyLevel: localStorage.getItem('hasCompletedAnyLevel') === 'true',
+      currentPrompt: '',
+      llmResponse: '',
+      levels: LEVELS,
+      highlightMoments: JSON.parse(localStorage.getItem('highlightMoments')) || [],
+      showRulesModal: false,
+    };
+  },
 
   getters: {
-    canGenerateResponse: (state) => state.tokens >= 50,
+    canGenerateResponse: (state) => true,
     progress: (state) => {
       const targetChars = new Set(state.targetPhrase.split(''));
       const collected = new Set(state.collectedChars);
@@ -89,15 +92,10 @@ export const useGameStore = defineStore('game', {
       this.tokens += 5;
       localStorage.setItem('tokens', this.tokens.toString());
     },
-    
+
     spendTokens(amount) {
-      if (this.tokens >= amount) {
-        this.tokens -= amount;
-        this.addUsedTokens(amount);
-        localStorage.setItem('tokens', this.tokens.toString());
-        return true;
-      }
-      return false;
+      this.addUsedTokens(amount);
+      return true;
     },
 
     addCollectedChars(text) {
@@ -151,9 +149,7 @@ export const useGameStore = defineStore('game', {
     },
 
     refundTokens(amount) {
-      this.tokens += amount;
-      this.totalUsedTokens -= amount; 
-      localStorage.setItem('tokens', this.tokens.toString());
+      this.totalUsedTokens -= amount;
       localStorage.setItem('totalUsedTokens', this.totalUsedTokens.toString());
     },
 
@@ -173,7 +169,7 @@ export const useGameStore = defineStore('game', {
       this.currentPrompt = '';
       this.llmResponse = '';
       this.highlightMoments = [];
-    
+
       localStorage.setItem('tokens', '0');
       localStorage.setItem('totalUsedTokens', '0');
       localStorage.setItem('collectedChars', JSON.stringify(Array.from(this.collectedChars)));
@@ -223,10 +219,10 @@ export const useGameStore = defineStore('game', {
         this.targetPhrase = level.phrase;
         this.currentLevel = levelId;
       }
-      
+
       // 保存当前关卡
       localStorage.setItem('currentLevel', this.currentLevel.toString());
-      
+
       // 清除游戏进度
       this.clearGameProgress();
     },

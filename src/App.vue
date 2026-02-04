@@ -32,6 +32,7 @@ const selectedLevel = ref(gameStore.currentLevel);
 const customLevelPhrase = ref(gameStore.customPhrase);
 const customInitialChars = ref('');
 const lastPrompt = ref('');
+const showRulesModal = ref(false);
 
 const isValidChar = computed(() => {
   if (!inputChar.value) return true;
@@ -237,6 +238,17 @@ const highlightAnswer = (answer) => {
     return targetChars.has(char) ? `<span class="highlight">${char}</span>` : char;
   }).join('');
 };
+onMounted(() => {
+  const hasReadRules = localStorage.getItem('hasReadRules');
+  if (!hasReadRules) {
+    showRulesModal.value = true;
+  }
+});
+
+const closeRules = () => {
+  showRulesModal.value = false;
+  localStorage.setItem('hasReadRules', 'true');
+};
 </script>
 
 <template>
@@ -244,7 +256,12 @@ const highlightAnswer = (answer) => {
     <n-config-provider>
       <div class="game-container">
         <!-- 标题 -->
-        <h1 class="game-title">LLM字集 - 文字收集游戏</h1>
+        <div class="title-container">
+          <h1 class="game-title">LLM字集 - 文字收集游戏</h1>
+          <n-button @click="showRulesModal = true" size="small" strong round color="#ff69b4" style="color: white;">
+            游戏规则
+          </n-button>
+        </div>
         <!-- 目标文字区域 -->
         <div class="target-section">
           <div class="section-header">
@@ -264,27 +281,21 @@ const highlightAnswer = (answer) => {
           </div>
         </div>
 
-        <!-- Token计数器和设置按钮 -->
+        <!-- 统计信息和设置按钮 -->
         <div class="header">
           <div class="token-info">
             <div class="info-item">
-              <span class="label">当前Token：</span>
-              <span class="value">{{ gameStore.tokens }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">累计消耗：</span>
+              <span class="label">累计消耗</span>
               <span class="value">{{ gameStore.totalUsedTokens }}</span>
             </div>
             <div class="info-item">
-              <span class="label">字库字数：</span>
+              <span class="label">字库字数</span>
               <span class="value">{{ gameStore.collectedCharsCount }}</span>
             </div>
           </div>
-          <n-space justify="end" style="width: auto">
-            <n-button @click="clearProgress" type="warning" size="small">
-              清除进度
-            </n-button>
-          </n-space>
+          <n-button @click="clearProgress" type="warning" size="small" secondary>
+            清除进度
+          </n-button>
         </div>
 
         <!-- 可用字库 -->
@@ -344,16 +355,8 @@ const highlightAnswer = (answer) => {
             gameStore.invalidChars(gameStore.currentPrompt).length > 0 ||
             !gameStore.currentPrompt.length ||
             gameStore.isGameComplete" :loading="gameStore.isGeneratingResponse" @click="generateResponse">
-            {{ gameStore.isGameComplete ? '已通关！' : '生成回复' }}
+            {{ gameStore.isGameComplete ? '已通关！' : '发送消息' }}
           </n-button>
-          <span v-if="!gameStore.isGameComplete" class="token-info-text">← 需要50 Token</span>
-        </div>
-        <!-- 获取Token按钮 -->
-        <div class="collect-token-button">
-          <n-button type="success" size="large" strong @click="gameStore.collectTokens">
-            获取Token (+5)
-          </n-button>
-          <span class="token-info-text">←点击相当于挖矿赚钱，才能发消息。</span>
         </div>
 
         <div class="highlight-moments" v-if="gameStore.highlightMoments.length > 0">
@@ -397,8 +400,29 @@ const highlightAnswer = (answer) => {
           </n-card>
         </n-modal>
 
-        <!-- 烟花容器 -->
-        <div class="fireworks-container"></div>
+        <!-- 游戏规则模态框 -->
+        <n-modal v-model:show="showRulesModal" style="width: 500px">
+          <n-card title="📖 游戏规则" :bordered="false" size="huge" role="dialog" aria-modal="true">
+            <div class="rules-content">
+              <p>欢迎来到 <strong>LLM字集</strong>！这是一个关于“文字收集”的创意游戏。</p>
+              <ul style="padding-left: 20px; line-height: 2;">
+                <li><strong>核心目标</strong>：通过与 AI 对话，诱导其说出特定的“目标文字”。</li>
+                <li><strong>字库受限</strong>：你无法自由打字，只能使用“可用字库”里已有的汉字组句。</li>
+                <li><strong>收集与解锁</strong>：AI 回复里的每一个新汉字都会被加入你的字库，帮你解锁更多表达能力。</li>
+                <li><strong>「狙击」快乐</strong>：当 AI 的回复中精准包含目标文字时，即视为收集成功。</li>
+                <li><strong>进阶策略</strong>：前期可以“胡说八道”，尽量诱导 AI 多回复来搜集新汉字；等字库丰富后，再根据语境引导 LLM 说出包含目标字的句子。</li>
+                <li><strong>隐藏关卡</strong>：当你完成任意一个官方关卡后，将解锁“自定义关卡”功能，开启无限可能的挑战！</li>
+              </ul>
+              <p style="margin-top: 16px; color: #888; font-size: 0.9em;">* 你的每一个字都很珍贵，请谨慎组合你的提示词。</p>
+            </div>
+            <template #footer>
+              <n-space justify="end">
+                <n-button type="primary" @click="closeRules">我准备好了</n-button>
+              </n-space>
+            </template>
+          </n-card>
+        </n-modal>
+
       </div>
       <!-- 页脚 -->
       <footer class="footer">

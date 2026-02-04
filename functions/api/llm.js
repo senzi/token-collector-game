@@ -1,16 +1,22 @@
+// Debug 模式配置
+const DEBUG_MODE = true;
+const DEBUG_RESPONSE = "祝新的一年，龙马精神，万事如意，身体健康！";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
   // ✅ 限制合法来源
   const allowedOrigins = [
     "https://zi.closeai.moe",
-    "http://127.0.0.1:8788"
+    "http://127.0.0.1:8788",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
   ];
 
   const origin = request.headers.get("origin");
-  if (!allowedOrigins.includes(origin)) {
+  if (origin && !allowedOrigins.includes(origin)) {
     return new Response(JSON.stringify({
-      error: "来源不被允许"
+      error: "来源不被允许: " + origin
     }), {
       status: 403,
       headers: { "Content-Type": "application/json" }
@@ -20,6 +26,16 @@ export async function onRequestPost(context) {
   try {
     const body = await request.json();
     const { prompt, systemPrompt } = body;
+
+    // 如果开启了 Debug 模式，直接返回模拟响应
+    if (DEBUG_MODE) {
+      return new Response(JSON.stringify({
+        content: DEBUG_RESPONSE,
+        usage: { completion_tokens: DEBUG_RESPONSE.length }
+      }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
     const messages = [];
     if (systemPrompt) {
