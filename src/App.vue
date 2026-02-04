@@ -257,9 +257,14 @@ const closeRules = () => {
         <!-- 标题 -->
         <div class="title-container">
           <h1 class="game-title">LLM字集 - 文字收集游戏</h1>
-          <n-button @click="showRulesModal = true" size="small" strong round color="#ff69b4" style="color: white;">
+          <n-button @click="showRulesModal = true" size="small" strong round color="#ff69b4" style="color: white;"
+            class="rules-btn">
             游戏规则
           </n-button>
+        </div>
+        <div class="model-info">
+          当前模型：<a href="https://api-docs.deepseek.com/zh-cn/quick_start/pricing" target="_blank"
+            class="model-link">deepseek-chat</a>
         </div>
         <!-- 目标文字区域 -->
         <div class="target-section">
@@ -427,7 +432,7 @@ const closeRules = () => {
       <footer class="footer">
         <p>
           开源地址：<a href="https://github.com/senzi/token-collector-game" target="_blank">GitHub</a> |
-          开发者：senzi & Windsurf |
+          Antigravity 2026. |
           <a href="https://github.com/senzi/token-collector-game/blob/main/LICENSE" target="_blank">MIT License</a>
         </p>
       </footer>
